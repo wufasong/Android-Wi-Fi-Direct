@@ -14,6 +14,7 @@ import android.os.Message;
 import android.os.StrictMode;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -35,6 +36,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+
+    public static final String TAG = MainActivity.class.getName();
 
     Button btnOnOff, btnDiscover, btnSend;
     ListView listView;
@@ -65,10 +68,8 @@ public class MainActivity extends AppCompatActivity {
         initialWork();
         exqListener();
 
-//        if (android.os.Build.VERSION.SDK_INT > 9) {
-//            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
-//            StrictMode.setThreadPolicy(policy);
-//        }
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
     }
 
     Handler handler=new Handler(new Handler.Callback() {
@@ -92,6 +93,22 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 if(wifiManager.isWifiEnabled())
                 {
+                    // close socket server first.
+                    try {
+                        if (serverClass != null)
+                        {
+                            ServerSocket server = serverClass.getServerSocket();
+                            Log.d(TAG, "close socket server " + server);
+                            if(server != null)
+                            {
+                                server.close();
+                            }
+                            serverClass = null;
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
                     wifiManager.setWifiEnabled(false);
                     btnOnOff.setText("ON");
                 }else {
@@ -234,25 +251,28 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public class ServerClass extends Thread{
-//        Socket socket;
         ServerSocket serverSocket = null;
 
         @Override
         public void run() {
             try {
-                if (serverSocket == null)
-                {
-//                    serverSocket=new ServerSocket(8888);
-                serverSocket=new ServerSocket();
-                serverSocket.setReuseAddress(true);
-                serverSocket.bind(new InetSocketAddress(8888));
-                }
+                serverSocket=new ServerSocket(8888);
+                Log.d(TAG, "bind socket port 8888. listen & waiting for socket client...");
                 Socket socket=serverSocket.accept();
+                Log.d(TAG, "socket client " + socket + " come in.");
                 sendReceive=new SendReceive(socket);
                 sendReceive.start();
+
+                Log.d(TAG, "serverSocket close...");
+                serverSocket.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+
+        public ServerSocket getServerSocket()
+        {
+            return serverSocket;
         }
     }
 
@@ -314,7 +334,10 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             try {
+                Log.d(TAG, "socket client start, connect to " + hostAdd + " : 8888");
+                socket.bind(null);
                 socket.connect(new InetSocketAddress(hostAdd,8888),500);
+                Log.d(TAG, "socket client connected.");
                 sendReceive=new SendReceive(socket);
                 sendReceive.start();
             } catch (IOException e) {
