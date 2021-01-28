@@ -30,6 +30,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -63,6 +64,11 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         initialWork();
         exqListener();
+
+//        if (android.os.Build.VERSION.SDK_INT > 9) {
+//            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+//            StrictMode.setThreadPolicy(policy);
+//        }
     }
 
     Handler handler=new Handler(new Handler.Callback() {
@@ -228,14 +234,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public class ServerClass extends Thread{
-        Socket socket;
-        ServerSocket serverSocket;
+//        Socket socket;
+        ServerSocket serverSocket = null;
 
         @Override
         public void run() {
             try {
-                serverSocket=new ServerSocket(8888);
-                socket=serverSocket.accept();
+                if (serverSocket == null)
+                {
+//                    serverSocket=new ServerSocket(8888);
+                serverSocket=new ServerSocket();
+                serverSocket.setReuseAddress(true);
+                serverSocket.bind(new InetSocketAddress(8888));
+                }
+                Socket socket=serverSocket.accept();
                 sendReceive=new SendReceive(socket);
                 sendReceive.start();
             } catch (IOException e) {
